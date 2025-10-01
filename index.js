@@ -45,6 +45,29 @@ async function requestOneTimePassword(email) {
     }
   }
 }
+//  this posts methodId and otpCode to the login endpoint
+async function authenticateOtp(methodId, otpCode) {
+  try {
+    console.log("Authenticating OTP...");
+    const response = await client.post(LOGIN_ENDPOINT, {
+      0: {
+        json: {
+          code: otpCode,
+          methodId: methodId,
+        },
+      },
+    });
+    console.log("OTP authenticated successfully.");
+    console.log("Full response:", response.data);
+    const sessionJwt = response.data[0]?.result.data.json.session_jwt;
+    console.log("Session JWT:", sessionJwt);
+    return sessionJwt;
+  } catch (error) {
+    if (error.response) {
+      console.error("Error response:", error);
+    }
+  }
+}
 
 async function main() {
   console.log("Logging in...");
