@@ -105,3 +105,4 @@ Test secret key: sk_test_xxxxx
 - [axios-cookiejar-support](https://www.npmjs.com/package/axios-cookiejar-support)
 - [tough-cookie](https://www.npmjs.com/package/tough-cookie?activeTab=readme)
 - [prompt-sync](https://www.npmjs.com/package/prompt-sync)
+- [User-Agent header](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/User-Agent)
