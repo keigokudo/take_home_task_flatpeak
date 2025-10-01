@@ -58,13 +58,6 @@ async function requestOneTimePassword(email) {
     console.log("OTP requested successfully.");
     const methodId = response.data[0]?.result.data.json.methodId;
 
-    // Show cookies stored
-    const cookies = await jar.getCookies(BASE_URL);
-    console.log(
-      "Cookies after request:",
-      cookies.map((c) => `${c.key}=${c.value}`)
-    );
-
     return methodId;
   } catch (error) {
     if (error.response) {
@@ -77,12 +70,10 @@ async function requestOneTimePassword(email) {
 async function authenticateOtp(methodId, otpCode) {
   try {
     console.log("Authenticating OTP...");
-    console.log("ids::", methodId, otpCode);
-    const response = await client.post(LOGIN_ENDPOINT, {
+    await client.post(LOGIN_ENDPOINT, {
       0: { json: { code: otpCode, methodId: methodId } },
     });
     console.log("OTP authenticated successfully.");
-    console.log("Full response:", JSON.stringify(response.data));
     return null;
   } catch (error) {
     console.error("Error response:", error);
@@ -91,14 +82,35 @@ async function authenticateOtp(methodId, otpCode) {
 
 async function getInternalApiResponse() {
   try {
-    console.log("Fetching API key from the page...");
+    console.log("Fetching API's response from the page...");
     const response = await client.get(INTERNAL_API_ENDPOINT);
-    console.log("Internal API response:", JSON.stringify(response.data));
 
     return response.data;
   } catch (error) {
-    console.error("Error fetching API key:", error);
+    console.error("Error fetching API:", error);
   }
+}
+
+function extractAccountIdAndApiKey(response) {
+  if (!Array.isArray(response) || response.length < 2) {
+    throw new Error("Invalid response format");
+  }
+
+  console.log(
+    "Subtracting an api key and account id from the protected page..."
+  );
+
+  // extract account_id from first object
+  const account_id = response[0]?.result?.data?.json?.default_account_id;
+
+  // extract the test key (judged by `live_mode: false`) from second object
+  const keys = response[1]?.result?.data?.json || [];
+  const test_key_obj = keys.find(
+    (k) => k.key_type === "secret" && !k.live_mode
+  );
+  const test_key = test_key_obj?.key;
+
+  return { account_id, test_key };
 }
 
 async function main() {
@@ -110,7 +122,13 @@ async function main() {
   console.log("Using OTP code:", otpCode);
   const jwt = await authenticateOtp(methodId, otpCode);
 
-  getApiKey();
+  const internalApiResponse = await getInternalApiResponse();
+  const { account_id, test_key } =
+    extractAccountIdAndApiKey(internalApiResponse);
+
+  console.log("-----Below are the auth-protected data-----");
+  console.log("account_id:", account_id);
+  console.log("Test secret key:", test_key);
 }
 
 main();
