@@ -1,0 +1,1 @@
+- rename `env_template` to `.env`
