@@ -22,7 +22,9 @@ const TRPC_INPUT = {
   0: { json: null, meta: { values: ["undefined"] } },
   1: { json: null, meta: { values: ["undefined"] } },
 };
-const INTERNAL_API_ENDPOINT = `${BASE_URL}/api/trpc/user.current,keys.list?batch=1&input=${TRPC_INPUT}`;
+// this could be redundant but it is for the readability
+const encodedTrpcParam = encodeURIComponent(JSON.stringify(TRPC_INPUT));
+const INTERNAL_API_ENDPOINT = `${BASE_URL}/api/trpc/user.current,keys.list?batch=1&input=${encodedTrpcParam}`;
 
 const jar = new CookieJar();
 const userAgent =
@@ -87,6 +89,18 @@ async function authenticateOtp(methodId, otpCode) {
   }
 }
 
+async function getInternalApiResponse() {
+  try {
+    console.log("Fetching API key from the page...");
+    const response = await client.get(INTERNAL_API_ENDPOINT);
+    console.log("Internal API response:", JSON.stringify(response.data));
+
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching API key:", error);
+  }
+}
+
 async function main() {
   console.log("Logging in...");
   const methodId = await requestOneTimePassword(EMAIL);
@@ -95,6 +109,8 @@ async function main() {
   const otpCode = prompt("One-time password:");
   console.log("Using OTP code:", otpCode);
   const jwt = await authenticateOtp(methodId, otpCode);
+
+  getApiKey();
 }
 
 main();
