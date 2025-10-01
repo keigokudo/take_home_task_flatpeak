@@ -2,10 +2,10 @@
 
 ## Analyze login
 
-### Auth apporach
+### Auth approach
 
 1. request one time password via email
-2. authenticate it with recevied code
+2. authenticate it with methodId and received code
 
 Login is proceed by email and a one-time password. Not by email and user id.
 The magic link comes from `login@test.stytch.com`.
@@ -87,3 +87,21 @@ No. Adding TypeScript might make a one-off script more complicated, especially w
 For this implementation, the OTP code is passed as an environment variable
 (`OTP_CODE=000000`) because the task focuses on HTTP authentication mechanics, not email automation.
 And it is easier to test if it is passed through environmental variable. There is also a potential issue with fresh token etc.
+
+## Stack
+
+Analyze the auth method of the dash page.
+Think about the architect of handing the OTP.
+I tried to login on my terminal while it is already logged in on my browser.
+Anti-bot from fly.io and need to set 'user-agent' to emulate a browser.
+
+## scrape the page vs call that internal API endpoint?
+
+jtw token it should be possible to get the response from the internal api.
+
+## session_jtw
+
+Will this be updated after OTP is submitted?
+Without this it returns EPIPE or ECONNRESET error.
+It looks the error comes from TCP layer, it even doesn't return status code.
+So the request even doesn't reach to the application layer.
