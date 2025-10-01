@@ -12,11 +12,44 @@ if (!EMAIL || !OTP_CODE) {
 
 // Configuration
 const BASE_URL = "https://tazah1-dashboard.flatpeak.com";
+const REQUEST_OTP_ENDPOINT = `${BASE_URL}/api/trpc/auth.loginEmail?batch=1`;
 const LOGIN_ENDPOINT = `${BASE_URL}/api/trpc/auth.authenticateOtp?batch=1`;
 
 const client = axios.create({
-  baseURL: LOGIN_ENDPOINT,
+  baseURL: BASE_URL,
   timeout: 60000, // 60 seconds timeout
   withCredentials: true, // to keep the jwt during the request
+  headers: {
+    "Content-Type": "application/json",
+  },
 });
-console.log("client", client);
+
+// request one-time password and get methodId from the response
+async function requestOneTimePassword(email) {
+  try {
+    console.log("Requesting OTP...");
+    const response = await client.post(REQUEST_OTP_ENDPOINT, {
+      0: {
+        json: {
+          email: email,
+        },
+      },
+    });
+
+    console.log("OTP requested successfully.");
+    const methodId = response.data[0]?.result.data.json.methodId;
+    return methodId;
+  } catch (error) {
+    if (error.response) {
+      console.error("Error response:", error);
+    }
+  }
+}
+
+async function main() {
+  console.log("Logging in...");
+  const methodId = await requestOneTimePassword(EMAIL);
+  console.log("Received methodId:", methodId);
+}
+
+main();
