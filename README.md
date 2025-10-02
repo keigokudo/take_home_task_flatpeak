@@ -74,7 +74,7 @@ node index.js
 
 ```
 -----Below are the auth-protected data-----
-account_id: acc_xxxxx
+Account id: acc_xxxxx
 Test secret key: sk_test_xxxxx
 ```
 

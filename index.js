@@ -15,18 +15,18 @@ if (!EMAIL) {
 }
 
 // Configuration
-const BASE_URL = "https://tazah1-dashboard.flatpeak.com";
-const REQUEST_OTP_ENDPOINT = `${BASE_URL}/api/trpc/auth.loginEmail?batch=1`;
-const LOGIN_ENDPOINT = `${BASE_URL}/api/trpc/auth.authenticateOtp?batch=1`;
+const baseUrl = "https://tazah1-dashboard.flatpeak.com";
+const requestOtpEndpoint = `${baseUrl}/api/trpc/auth.loginEmail?batch=1`;
+const loginEndpoint = `${baseUrl}/api/trpc/auth.authenticateOtp?batch=1`;
 
-// TRPC requires this values to be sent as a query parameter
-// this is decode. It could be redundant but it is for the readability
-const TRPC_INPUT = {
+// TRPC requires these values to be sent as a query parameter
+// this is decode. It could be redundant but it is for readability
+const trpcInput = {
   0: { json: null, meta: { values: ["undefined"] } },
   1: { json: null, meta: { values: ["undefined"] } },
 };
-const encodedTrpcParam = encodeURIComponent(JSON.stringify(TRPC_INPUT));
-const INTERNAL_API_ENDPOINT = `${BASE_URL}/api/trpc/user.current,keys.list?batch=1&input=${encodedTrpcParam}`;
+const encodedTrpcParam = encodeURIComponent(JSON.stringify(trpcInput));
+const internalApiEndpoint = `${baseUrl}/api/trpc/user.current,keys.list?batch=1&input=${encodedTrpcParam}`;
 
 // Setup cookie jar for session persistence
 const jar = new CookieJar();
@@ -35,7 +35,7 @@ const userAgent =
 
 const client = wrapper(
   axios.create({
-    baseURL: BASE_URL,
+    baseURL: baseUrl,
     timeout: 60000, // 60 seconds timeout
     withCredentials: true,
     jar,
@@ -55,7 +55,7 @@ const client = wrapper(
 async function requestOneTimePassword(email) {
   try {
     console.log("Requesting OTP...");
-    const response = await client.post(REQUEST_OTP_ENDPOINT, {
+    const response = await client.post(requestOtpEndpoint, {
       0: {
         json: {
           email: email,
@@ -93,7 +93,7 @@ async function requestOneTimePassword(email) {
 async function authenticateOtp(methodId, otpCode) {
   try {
     console.log("Authenticating OTP...");
-    await client.post(LOGIN_ENDPOINT, {
+    await client.post(loginEndpoint, {
       0: { json: { code: otpCode, methodId: methodId } },
     });
     console.log("OTP authenticated successfully.");
@@ -116,7 +116,7 @@ async function authenticateOtp(methodId, otpCode) {
 async function getInternalApiResponse() {
   try {
     console.log("Fetching API's response from the page...");
-    const response = await client.get(INTERNAL_API_ENDPOINT);
+    const response = await client.get(internalApiEndpoint);
 
     return response.data;
   } catch (error) {
@@ -131,9 +131,9 @@ async function getInternalApiResponse() {
 }
 
 /**
- * Extract account ID and test API key from response
+ * Extract accountId and testKey from response
  * @param {Array} response - API response array from getInternalApiResponse
- * @returns {Object} Object containing account_id and test_key
+ * @returns {Object} Object containing accountId and testKey
  * @throws {Error} If data cannot be extracted
  */
 function extractAccountIdAndApiKey(response) {
@@ -145,17 +145,15 @@ function extractAccountIdAndApiKey(response) {
     "Subtracting an api key and account id from the protected page..."
   );
 
-  // extract account_id from first object
-  const account_id = response[0]?.result?.data?.json?.default_account_id;
+  // extract accountId from first object
+  const accountId = response[0]?.result?.data?.json?.default_account_id;
 
   // extract the test key (judged by `live_mode: false`) from second object
   const keys = response[1]?.result?.data?.json || [];
-  const test_key_obj = keys.find(
-    (k) => k.key_type === "secret" && !k.live_mode
-  );
-  const test_key = test_key_obj?.key;
+  const testKeyObj = keys.find((k) => k.key_type === "secret" && !k.live_mode);
+  const testKey = testKeyObj?.key;
 
-  return { account_id, test_key };
+  return { accountId, testKey };
 }
 
 /**
@@ -165,7 +163,7 @@ async function main() {
   try {
     console.log("Logging in...");
 
-    // 1. Request OTP amd get methodId
+    // 1. Request OTP and get methodId
     const methodId = await requestOneTimePassword(EMAIL);
     console.log("Received methodId:", methodId);
 
@@ -181,25 +179,25 @@ async function main() {
     // 4. Fetch protected data
     const internalApiResponse = await getInternalApiResponse();
 
-    // 5. Extract account_id and test_key
-    const { account_id, test_key } =
+    // 5. Extract accountId and testKey
+    const { accountId, testKey } =
       extractAccountIdAndApiKey(internalApiResponse);
 
-    if (!account_id || !test_key) {
+    if (!accountId || !testKey) {
       console.error(
-        "Failed to extract account_id or test_key or you may not have an account on the website"
+        "Failed to extract accountId or testKey or you may not have an account on the website"
       );
       console.error(
         "Response data:",
         JSON.stringify(internalApiResponse, null, 2)
       );
-      throw new Error("account_id or test_key not found in response");
+      throw new Error("accountId or testKey not found in response");
     }
 
     // 6. Display results
     console.log("-----Below are the auth-protected data-----");
-    console.log("account_id:", account_id);
-    console.log("Test secret key:", test_key);
+    console.log("Account id:", accountId);
+    console.log("Test secret key:", testKey);
   } catch (error) {
     console.error("Error:", error.message);
   }
