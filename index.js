@@ -66,11 +66,21 @@ async function requestOneTimePassword(email) {
     console.log("OTP requested successfully.");
     const methodId = response.data[0]?.result.data.json.methodId;
 
+    if (!methodId) {
+      console.error("Failed to extract methodId from response");
+      console.error("Response data:", JSON.stringify(response.data, null, 2));
+      throw new Error("methodId not found in response");
+    }
+
     return methodId;
   } catch (error) {
-    if (error.response) {
-      console.error("Error response:", error);
-    }
+    console.error("OTP request failed:", {
+      status: error.response?.status,
+      data: error.response?.data,
+      message: error.message,
+      code: error.code,
+    });
+    throw new Error(`OTP request failed: ${error.message}`);
   }
 }
 
@@ -87,9 +97,14 @@ async function authenticateOtp(methodId, otpCode) {
       0: { json: { code: otpCode, methodId: methodId } },
     });
     console.log("OTP authenticated successfully.");
-    return null;
   } catch (error) {
-    console.error("Error response:", error);
+    console.error("OTP authentication failed:", {
+      status: error.response?.status,
+      data: error.response?.data,
+      message: error.message,
+      code: error.code,
+    });
+    throw new Error(`OTP authentication failed: ${error.message}`);
   }
 }
 
@@ -105,7 +120,13 @@ async function getInternalApiResponse() {
 
     return response.data;
   } catch (error) {
-    console.error("Error fetching API:", error);
+    console.error("Fetch protected data failed:", {
+      status: error.response?.status,
+      data: error.response?.data,
+      message: error.message,
+      code: error.code,
+    });
+    throw new Error(`Fetch protected data failed: ${error.message}`);
   }
 }
 
@@ -141,31 +162,36 @@ function extractAccountIdAndApiKey(response) {
  * Main execution function
  */
 async function main() {
-  console.log("Logging in...");
+  try {
+    console.log("Logging in...");
 
-  // 1. Request OTP amd get methodId
-  const methodId = await requestOneTimePassword(EMAIL);
-  console.log("Received methodId:", methodId);
+    // 1. Request OTP amd get methodId
+    const methodId = await requestOneTimePassword(EMAIL);
+    console.log("Received methodId:", methodId);
 
-  // 2. Get OTP code from user
-  console.info("Press Enter after you type the OTP from email.");
-  const otpCode = prompt("One-time password:");
-  console.log("Using OTP code:", otpCode);
+    // 2. Get OTP code from user
+    console.info("Press Enter after you type the OTP from email.");
+    const otpCode = prompt("One-time password:");
+    console.log("Using OTP code:", otpCode);
+    if (!otpCode) throw new Error("No OTP entered");
 
-  // 3. Authenticate with OTP code (actual login)
-  await authenticateOtp(methodId, otpCode);
+    // 3. Authenticate with OTP code (actual login)
+    await authenticateOtp(methodId, otpCode);
 
-  // 4. Fetch protected data
-  const internalApiResponse = await getInternalApiResponse();
+    // 4. Fetch protected data
+    const internalApiResponse = await getInternalApiResponse();
 
-  // 5. Extract account_id and test_key
-  const { account_id, test_key } =
-    extractAccountIdAndApiKey(internalApiResponse);
+    // 5. Extract account_id and test_key
+    const { account_id, test_key } =
+      extractAccountIdAndApiKey(internalApiResponse);
 
-  // 6. Display results
-  console.log("-----Below are the auth-protected data-----");
-  console.log("account_id:", account_id);
-  console.log("Test secret key:", test_key);
+    // 6. Display results
+    console.log("-----Below are the auth-protected data-----");
+    console.log("account_id:", account_id);
+    console.log("Test secret key:", test_key);
+  } catch (error) {
+    console.error("Error:", error.message);
+  }
 }
 
 main();
