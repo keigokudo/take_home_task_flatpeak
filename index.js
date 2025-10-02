@@ -142,17 +142,27 @@ function extractAccountIdAndApiKey(response) {
  */
 async function main() {
   console.log("Logging in...");
+
+  // 1. Request OTP amd get methodId
   const methodId = await requestOneTimePassword(EMAIL);
   console.log("Received methodId:", methodId);
+
+  // 2. Get OTP code from user
   console.info("Press Enter after you type the OTP from email.");
   const otpCode = prompt("One-time password:");
   console.log("Using OTP code:", otpCode);
-  const jwt = await authenticateOtp(methodId, otpCode);
 
+  // 3. Authenticate with OTP code (actual login)
+  await authenticateOtp(methodId, otpCode);
+
+  // 4. Fetch protected data
   const internalApiResponse = await getInternalApiResponse();
+
+  // 5. Extract account_id and test_key
   const { account_id, test_key } =
     extractAccountIdAndApiKey(internalApiResponse);
 
+  // 6. Display results
   console.log("-----Below are the auth-protected data-----");
   console.log("account_id:", account_id);
   console.log("Test secret key:", test_key);
