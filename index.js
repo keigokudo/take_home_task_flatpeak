@@ -4,11 +4,13 @@ const { CookieJar } = require("tough-cookie");
 const prompt = require("prompt-sync")();
 require("dotenv").config();
 
-// Load environment variables from .env file
+// Load environment variables
 const EMAIL = process.env.EMAIL;
 
 if (!EMAIL) {
   console.error("Please set EMAIL in the .env file");
+  console.log("Create a .env file with:");
+  console.log("EMAIL=your.email@example.com");
   process.exit(1);
 }
 
