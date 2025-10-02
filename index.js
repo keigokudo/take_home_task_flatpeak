@@ -185,6 +185,17 @@ async function main() {
     const { account_id, test_key } =
       extractAccountIdAndApiKey(internalApiResponse);
 
+    if (!account_id || !test_key) {
+      console.error(
+        "Failed to extract account_id or test_key or you may not have an account on the website"
+      );
+      console.error(
+        "Response data:",
+        JSON.stringify(internalApiResponse, null, 2)
+      );
+      throw new Error("account_id or test_key not found in response");
+    }
+
     // 6. Display results
     console.log("-----Below are the auth-protected data-----");
     console.log("account_id:", account_id);

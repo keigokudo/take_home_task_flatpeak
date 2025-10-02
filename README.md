@@ -99,6 +99,13 @@ Test secret key: sk_test_xxxxx
 
 ---
 
+## Limitations
+
+Only users who have already created an account on the website can retrieve data from the page.
+The script automates login and data retrieval but does not cover account creation.
+
+---
+
 ## References
 
 - [Axios Documentation](https://www.npmjs.com/package/axios#axios-api)
