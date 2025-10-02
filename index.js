@@ -19,14 +19,16 @@ const BASE_URL = "https://tazah1-dashboard.flatpeak.com";
 const REQUEST_OTP_ENDPOINT = `${BASE_URL}/api/trpc/auth.loginEmail?batch=1`;
 const LOGIN_ENDPOINT = `${BASE_URL}/api/trpc/auth.authenticateOtp?batch=1`;
 
+// TRPC requires this values to be sent as a query parameter
+// this is decode. It could be redundant but it is for the readability
 const TRPC_INPUT = {
   0: { json: null, meta: { values: ["undefined"] } },
   1: { json: null, meta: { values: ["undefined"] } },
 };
-// this could be redundant but it is for the readability
 const encodedTrpcParam = encodeURIComponent(JSON.stringify(TRPC_INPUT));
 const INTERNAL_API_ENDPOINT = `${BASE_URL}/api/trpc/user.current,keys.list?batch=1&input=${encodedTrpcParam}`;
 
+// Setup cookie jar for session persistence
 const jar = new CookieJar();
 const userAgent =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36";
@@ -44,7 +46,12 @@ const client = wrapper(
   })
 );
 
-// request one-time password and get methodId from the response
+/**
+ * Request OTP code via email
+ * @param {string} email - User's email address
+ * @returns {Promise<string>} methodId - Unique identifier for this login attempt
+ * @throws {Error} If request fails or methodId cannot be extracted
+ */
 async function requestOneTimePassword(email) {
   try {
     console.log("Requesting OTP...");
@@ -67,7 +74,12 @@ async function requestOneTimePassword(email) {
   }
 }
 
-//  this posts methodId and otpCode to the login endpoint
+/**
+ * Authenticate with OTP code and establish session
+ * @param {string} methodId - Method ID from requestOneTimePassword
+ * @param {string} otpCode - 6-digit OTP code from email
+ * @throws {Error} If authentication fails
+ */
 async function authenticateOtp(methodId, otpCode) {
   try {
     console.log("Authenticating OTP...");
@@ -81,6 +93,11 @@ async function authenticateOtp(methodId, otpCode) {
   }
 }
 
+/**
+ * Fetch protected data using authenticated session
+ * @returns {Promise<Array>} Response data containing user info and API keys
+ * @throws {Error} If request fails
+ */
 async function getInternalApiResponse() {
   try {
     console.log("Fetching API's response from the page...");
@@ -92,6 +109,12 @@ async function getInternalApiResponse() {
   }
 }
 
+/**
+ * Extract account ID and test API key from response
+ * @param {Array} response - API response array from getInternalApiResponse
+ * @returns {Object} Object containing account_id and test_key
+ * @throws {Error} If data cannot be extracted
+ */
 function extractAccountIdAndApiKey(response) {
   if (!Array.isArray(response) || response.length < 2) {
     throw new Error("Invalid response format");
@@ -114,6 +137,9 @@ function extractAccountIdAndApiKey(response) {
   return { account_id, test_key };
 }
 
+/**
+ * Main execution function
+ */
 async function main() {
   console.log("Logging in...");
   const methodId = await requestOneTimePassword(EMAIL);
