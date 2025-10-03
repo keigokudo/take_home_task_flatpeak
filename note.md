@@ -1,107 +1,180 @@
-# Note
+# Implementation Notes
 
-## Analyze login
+_These notes document my implementation process, technical decisions, and lessons learned during the task._
 
-### Auth approach
+## TL;DR
 
-1. request one time password via email
-2. authenticate it with methodId and received code
+Key Implementation Decisions:
 
-Login is proceed by email and a one-time password. Not by email and user id.
-The magic link comes from `login@test.stytch.com`.
+- TypeScript: Not used - unnecessary overhead for a simple demonstration script
+- Unit Testing: Not implemented - considered out of scope for this task
+- Data Retrieval: Direct internal API calls via tRPC endpoints (not web scraping)
+- Session Management: tough-cookie + axios-cookiejar-support for automatic cookie handling
+- OTP Input: Interactive CLI prompt - email automation is outside scope
 
-At the login time.
-Endpoint:
-https://tazah1-dashboard.flatpeak.com/api/trpc/auth.authenticateOtp?batch=1
+## Authentication Flow Analysis
 
-Payload structure:
-{0: {json: {code: "000000", methodId: "email-test-some-hash"}}}
+### Login Mechanism
 
-Auth method:
-session jwt
+The dashboard uses a passwordless authentication system powered by [Stytch](https://stytch.com/):
 
-session_jwt=jwt_token_hash
+1. **Request OTP**: User submits email to receive a one-time password
+2. **Authenticate**: Submit OTP code with `methodId` to establish session
+3. **Session Management**: Authentication creates a JWT session token (`session_jwt`)
 
-Decoded JWT:
+**Key Endpoints:**
 
-```
+- OTP Request: `POST /api/trpc/auth.loginEmail?batch=1`
+- OTP Authentication: `POST /api/trpc/auth.authenticateOtp?batch=1`
+- Protected Data: `GET /api/trpc/user.current,keys.list?batch=1`
+
+**Authentication Method:**
+
+- Session-based via JWT cookie
+- OTP delivery from `login@test.stytch.com`
+- No traditional password required
+
+### tRPC Protocol
+
+The dashboard uses [tRPC](https://trpc.io/) for type-safe API communication:
+
+- Batch requests require specific query parameter encoding
+- Payload structure: `{0: {json: {code: "...", methodId: "..."}}}`
+- Input parameters must be URL-encoded JSON
+
+### JWT Token Structure
+
+The session JWT contains:
+
+- User identification (`sub`, `reference_id`)
+- Session metadata (started, accessed, expires timestamps)
+- Authentication factors (confirms OTP via email)
+- Expiry: 30 days from authentication
+
+Sample decoded structure:
+
+```json
 {
-  "aud": [
-    "project-test-646a3368-97a0-4f10-889b-7ce0cce9ac85"
-  ],
+  "aud": ["project-test-..."],
   "email": "user@example.com",
-  "exp": 1759312000,
   "https://stytch.com/session": {
-    "id": "session-test-[hash]",
-    "started_at": "2025-10-01T09:41:40Z",
-    "last_accessed_at": "2025-10-01T09:41:40Z",
-    "expires_at": "2025-10-31T09:41:40Z",
-    "attributes": {
-      "user_agent": "",
-      "ip_address": ""
-    },
     "authentication_factors": [
       {
-        "type": "otp", // one time password is used
-        "delivery_method": "email",
-        "last_authenticated_at": "2025-10-01T09:41:40Z",
-        "email_factor": {
-          "email_id": "email-test-[hash]",
-          "email_address": "user@example.com"
-        }
+        "type": "otp",
+        "delivery_method": "email"
       }
     ]
-  },
-  "iat": 1759311700,
-  "iss": "stytch.com/project-test-[hash]",
-  "nbf": 1759311700,
-  "reference_id": "user-test-[hash]",
-  "sub": "user-test-[hash]"
+  }
 }
 ```
 
-### Learning
+## Technical Decisions
 
-Stytch
-https://stytch.com/
+### HTTP Client: Axios vs node-fetch
 
-RPC/tRPC
-https://trpc.io/
+**Decision: Axios**
 
-## Techs
+**Rationale:**
 
-### Axios vs node-fetch: Quick Decision for Task
+- Automatic JSON parsing and error handling reduces debugging time
+- Built-in interceptor support for complex auth flows
+- Better cookie/session management out of the box
+- Size difference negligible for this use case
 
-For this login task, I’m going with Axios.
-It’s feature-rich, handling JSON parsing and errors automatically, which saves time debugging the dashboard login. While node-fetch is lightweight and great for raw HTTP, it requires manual work for those features. The size difference is negligible, and Axios feels easier for scaling, even if this is a one-off script.
+While `node-fetch` is lighter and closer to browser Fetch API, Axios provides better DX for this authentication-heavy task without manual response parsing.
 
-Axios vs. Fetch (2025 update): Which should you use for HTTP requests?
-https://blog.logrocket.com/axios-vs-fetch-2025/
+**Reference:** [Axios vs. Fetch (2025 update)](https://blog.logrocket.com/axios-vs-fetch-2025/)
 
-### Should I use TypeScript for this project?
+### TypeScript: Not Used
 
-No. Adding TypeScript might make a one-off script more complicated, especially when I'm short on time.
+**Decision: Plain JavaScript**
 
-### OTP Handling Decision
+**Rationale:**
 
-For this implementation, the OTP code is passed as an environment variable
-(`OTP_CODE=000000`) because the task focuses on HTTP authentication mechanics, not email automation.
-And it is easier to test if it is passed through environmental variable. There is also a potential issue with fresh token etc.
+- Simple script doesn't justify TypeScript setup overhead
+- Time-boxed task benefits from faster iteration
+- Node.js with JSDoc provides sufficient type hints
 
-## Stack
+For production systems, TypeScript would be preferred for type safety across API boundaries.
 
-Analyze the auth method of the dash page.
-Think about the architect of handing the OTP.
-I tried to login on my terminal while it is already logged in on my browser.
-Anti-bot from fly.io and need to set 'user-agent' to emulate a browser.
+### OTP Input Method
 
-## scrape the page vs call that internal API endpoint?
+**Decision: Interactive CLI prompt**
 
-jtw token it should be possible to get the response from the internal api.
+**Rationale:**
 
-## session_jtw
+- Task focuses on HTTP mechanics, not email automation
+- Interactive input demonstrates real-world UX
+- Avoids complexity of email polling/IMAP integration
+- Easier to test and demonstrate
 
-Will this be updated after OTP is submitted?
-Without this it returns EPIPE or ECONNRESET error.
-It looks the error comes from TCP layer, it even doesn't return status code.
-So the request even doesn't reach to the application layer.
+**Alternative considered:** Environment variable (`OTP_CODE=000000`) - simpler for automated testing but less realistic for demo purposes.
+
+### Unit Testing
+
+**Decision: Not implemented**
+
+**Rationale:**
+
+- Out of scope for simple demonstration script
+- Testing pure functions (`extractAccountIdAndApiKey`) would be valuable but:
+  - Adds complexity to what should be a straightforward example
+  - HTTP/auth flow testing requires extensive mocking (nock, msw)
+  - Time better spent on core implementation quality
+
+**If this were production code:**
+
+- Unit tests for data extraction logic
+- Integration tests with mocked HTTP responses
+- Error handling scenarios (invalid OTP, expired sessions, etc.)
+
+## Implementation Challenges
+
+### Anti-Bot Protection
+
+**Issue:** Initial requests were blocked by Fly.io's anti-bot system
+
+**Solution:** Added browser-like User-Agent header:
+
+```javascript
+'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) ...'
+```
+
+### Cookie Persistence
+
+**Issue:** Session JWT must persist across requests
+
+**Solution:** Used `axios-cookiejar-support` with `tough-cookie`:
+
+- Automatic cookie storage and transmission
+- Maintains session state throughout login flow
+- Critical for accessing protected endpoints
+
+### TCP-Level Errors
+
+**Observation:** Requests without proper session cookies failed at TCP layer (EPIPE/ECONNRESET) before reaching application layer - no HTTP status codes returned.
+
+**Insight:** Server appears to drop connections that don't present valid session cookies, likely as an anti-scraping measure.
+
+## Architecture Decisions
+
+### API vs Web Scraping
+
+**Decision: Direct API calls**
+
+**Rationale:**
+
+- Authenticated session JWT provides API access
+- Internal tRPC endpoints return structured JSON
+- More reliable and performant than HTML parsing
+- Aligns with task requirement: "raw HTTP requests"
+
+The dashboard's internal APIs are well-structured and accessible once authenticated, making scraping unnecessary.
+
+## Key Learnings
+
+1. **Stytch Integration**: Modern passwordless auth is becoming standard
+2. **tRPC Protocol**: Type-safe RPC requires understanding batch request structure
+3. **Session Management**: JWT cookies are critical - even TCP layer enforces them
+4. **Anti-Bot Measures**: User-Agent headers still matter in 2025
+5. **API Discovery**: Browser DevTools Network tab remains the best API documentation
