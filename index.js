@@ -142,7 +142,7 @@ function extractAccountIdAndApiKey(response) {
   }
 
   console.log(
-    "Subtracting an api key and account id from the protected page..."
+    "Extracting an api key and account id from the protected page..."
   );
 
   // extract accountId from first object
